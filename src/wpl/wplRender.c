@@ -66,7 +66,6 @@ wShaderComponent* wCreateUniform(wShader* shader,
 	c->type = type;
 	c->count = count;
 	c->ptr = ptr;
-	shader->attribCount++;
 
 	shader->uniformCount++;
 	return c;
@@ -173,9 +172,41 @@ void wInitBatch(wRenderBatch* batch,
 	batch->indices = indices;
 }
 
+static
+u32 transformOpenGLTypes(u32 in)
+{
+	switch(in) {
+		case wShader_NormalizedInt:
+			return GL_INT;
+		case wShader_NormalizedShort:
+			return GL_SHORT;
+		case wShader_NormalizedByte:
+			return GL_UNSIGNED_BYTE;
+		case wShader_Float:
+			return GL_FLOAT;
+		case wShader_Double:
+			return GL_DOUBLE;
+		case wShader_FloatInt:
+			return GL_INT;
+		case wShader_FloatShort:
+			return GL_SHORT;
+		case wShader_FloatByte:
+			return GL_UNSIGNED_BYTE;
+		case wShader_Int:
+			return GL_INT;
+		case wShader_Short:
+			return GL_SHORT;
+		case wShader_Byte:
+			return GL_UNSIGNED_BYTE;
+		default:
+			return GL_FLOAT;
+	}
+}
+
 void wConstructBatchGraphicsState(wRenderBatch* batch)
 {
 	wShader* shader = batch->shader;
+	glUseProgram(shader->program);
 	if(shader->targetVersion > 21) {
 		glGenVertexArrays(1, &batch->vao);
 		glBindVertexArray(batch->vao);
@@ -184,7 +215,7 @@ void wConstructBatchGraphicsState(wRenderBatch* batch)
 	glGenBuffers(1, &batch->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, batch->vbo);
 
-	u32 attribTypes[] = {
+	i32 attribTypes[] = {
 		GL_FLOAT, GL_DOUBLE, 
 		GL_INT, GL_SHORT, GL_UNSIGNED_BYTE,
 		GL_INT, GL_SHORT, GL_UNSIGNED_BYTE,
@@ -194,8 +225,13 @@ void wConstructBatchGraphicsState(wRenderBatch* batch)
 
 	for(isize i = 0; i < shader->attribCount; ++i) {
 		wShaderComponent* c = shader->attribs + i;
+		printf("%s %d %d\n", c->name, c->loc, glGetAttribLocation(shader->program, c->name));
 		i32 isNormalized = 0;
+#if WPL_EMSCRIPTEN
+		u32 type = transformOpenGLTypes(c->type);
+#else
 		u32 type = attribTypes[c->type - wShader_Float];
+#endif
 		glEnableVertexAttribArray(c->loc);
 		if(glVertexAttribDivisor) glVertexAttribDivisor(c->loc, c->divisor);
 		switch(c->type) {
@@ -208,6 +244,7 @@ void wConstructBatchGraphicsState(wRenderBatch* batch)
 			case wShader_FloatInt:
 			case wShader_FloatShort:
 			case wShader_FloatByte:
+				//printf("%s %d -> %x\n", c->name, c->type - wShader_Float, type);
 				glVertexAttribPointer(
 						c->loc,
 						c->count,
@@ -420,8 +457,8 @@ void wUploadTexture(wTexture* texture)
 	glGenTextures(1, &texture->glIndex);
 	glBindTexture(GL_TEXTURE_2D, texture->glIndex);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -434,6 +471,7 @@ void wUploadTexture(wTexture* texture)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+#ifndef WPL_EMSCRIPTEN
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #define STBI_NO_STDIO
@@ -458,5 +496,27 @@ i32 wInitTexture(wTexture* texture, void* data, isize size)
 	texture->glIndex = -1;
 	return 1;
 }
+#else
+#include <SDL2/SDL_image.h>
+i32 wInitTexture(wTexture* texture, void* data, isize size)
+{
+	i32 w=0, h=0, bpp=0;
+	//u8* pixels = stbi_load_from_memory(data, size, &w, &h, &bpp, STBI_rgb_alpha);
+	SDL_RWops* rwop = SDL_RWFromConstMem(data, size);
+	SDL_Surface* img = IMG_LoadPNG_RW(rwop);
+	w = img->w;
+	h = img->h;
 
+	if(w == 0 || h == 0) {
+		wLogError(0, "Error: Unable to parse image\n");
+		return 0;
+	}
+
+	texture->w = w;
+	texture->h = h;
+	texture->pixels = img->pixels;
+	texture->glIndex = -1;
+	return 1;
+}
+#endif
 

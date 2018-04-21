@@ -123,7 +123,7 @@ typedef struct
 
 void wQuit()
 {
-
+	ExitProcess(0);
 }
 
 
@@ -184,7 +184,6 @@ i64 wCreateWindow(wWindowDef* def, wWindow* window)
 	{
 		char filename[1024];
 		u32 size = GetModuleFileNameA(module, filename, 1024);
-		printf("%s\n", filename);
 		for(u32 find = size; find > 0; find--) {
 			if(filename[find] == '\\') {
 				size = find;
@@ -326,6 +325,11 @@ wFileHandle wGetFileHandle(string filename)
 	return file;
 }
 
+void wCloseFileHandle(wFileHandle file)
+{
+	CloseHandle(file);
+}
+
 isize wGetFileSize(wFileHandle file)
 {
 	LARGE_INTEGER i;
@@ -342,4 +346,5 @@ isize wGetFileModifiedTime(wFileHandle file)
 	i.u.HighPart = t.dwHighDateTime;
 	return i.QuadPart;
 }
+
 

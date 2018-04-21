@@ -74,8 +74,10 @@ void createGraphicsDependencies()
 			&textureSize, 
 			game.arena);
 	game.texture = wArenaPush(game.arena, sizeof(wTexture));
+//#ifndef WPL_EMSCRIPTEN
 	wInitTexture(game.texture, textureData, textureSize);
 	wUploadTexture(game.texture);
+//#endif
 
 	game.shader = wArenaPush(game.arena, sizeof(wShader));
 	wInitShader(game.shader, sizeof(Sprite));
@@ -164,9 +166,31 @@ void update()
 	drawSprites(game.batch);
 }
 
+#ifdef WPL_EMSCRIPTEN
+#include <emscripten.h>
+void mainloop()
+{
+	wUpdate(&game.window, &game.state);
+	update();
+	wRender(&game.window);
+}
+#endif
+
+
+//int main(int argc, char** argv)
 void GameMain()
 {
+#ifdef WPL_WIN32_BACKEND
 	wWindowDef def = wDefineWindow("TestApp - Win32/NoCRT");
+#else
+#ifdef WPL_SDL_BACKEND
+#ifdef WPL_EMSCRIPTEN
+	wWindowDef def = wDefineWindow("TestApp - Emscripten");
+#else
+	wWindowDef def = wDefineWindow("TestApp - SDL2/CRT");
+#endif
+#endif
+#endif
 	wCreateWindow(&def, &game.window);
 	wInitState(&game.state, &game.input);
 
@@ -175,14 +199,27 @@ void GameMain()
 
 	createGraphicsDependencies();
 	game.batch = createSpriteBatch(4096, game.arena);
+#ifdef WPL_EMSCRIPTEN
+	emscripten_set_main_loop(mainloop, 60, 1);
+#endif
 
+#ifndef WPL_EMSCRIPTEN
 	i32 running = 1;
 	while(!game.state.exitEvent) {
 		wUpdate(&game.window, &game.state);
 		update();
 		wRender(&game.window);
 	}
+#endif
 
+	//return 0;
 	wQuit();
 }
 
+#ifdef WPL_SDL_BACKEND
+int main(int argc, char** argv)
+{
+	GameMain();
+	return 0;
+}
+#endif

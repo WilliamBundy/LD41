@@ -60,11 +60,11 @@ enum
 /* Returns wDecompressMemToMem_FAILED on failure,
  * or the number of bytes written on success. */
 #define wDecompressMemToMem_FAILED ((size_t)(-1))
-size_t wDecompressMemToMem(
+usize wDecompressMemToMem(
 		void *pOut_buf,
-		size_t out_buf_len,
-		const void *pSrc_buf,
-		size_t src_buf_len,
+		usize out_buf_len,
+		void *pSrc_buf,
+		usize src_buf_len,
 		i32 flags);
 
 struct wTinflDecompressor_tag;
@@ -924,8 +924,7 @@ tinfl_status wTinflDecompress(
 	return status;
 }
 
-usize 
-wDecompressMemToMem(
+usize wDecompressMemToMem(
 		void *pOut_buf, 
 		usize out_buf_len, 
 		void *pSrc_buf, 

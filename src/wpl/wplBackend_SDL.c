@@ -2,25 +2,32 @@
 #ifdef WPL_WINDOWS
 #include <Windows.h>
 #include <malloc.h>
-#elif WPL_LINUX
+#else
+#ifdef WPL_LINUX
 #include <sys/mman.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #endif
+#endif
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define WB_ALLOC_IMPLEMENTATION
 #define WB_ALLOC_CUSTOM_INTEGER_TYPES
 #define WB_ALLOC_BACKEND_API static
 #include "thirdparty/wb_alloc.h"
 
+
+
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
 #define WB_GL_IMPLEMENTATION
-#define WB_GL_USE_ALL_VERSIONS
+#define WB_GL_USE_LEGACY
+#define WB_GL_USE_COMPAT
+#define WB_GL_USE_CORE
 #define WB_GL_SDL
 #include "thirdparty/wb_gl_loader.h"
 
@@ -30,7 +37,7 @@ static
 i64 wSDLInit()
 {
 	SDL_SetMainReady();
-	int ret = SDL_Init(SDL_INIT_EVERYTHING);
+	int ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 	wWasInit = 1;
 	return ret;
 }
@@ -45,6 +52,13 @@ i64 wCreateWindow(wWindowDef* def, wWindow* window)
 	if(!wWasInit) {
 		wSDLInit();
 	}
+
+#if WPL_EMSCRIPTEN
+	window->basePath = "assets/";
+#else
+	window->basePath = SDL_GetBasePath();
+#endif
+
 	i64 wposx, wposy;
 	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_WARN);
 #define GLattr(attr, val) SDL_GL_SetAttribute(SDL_GL_##attr, val)
@@ -52,13 +66,22 @@ i64 wCreateWindow(wWindowDef* def, wWindow* window)
 	GLattr(GREEN_SIZE, 8);
 	GLattr(BLUE_SIZE, 8);
 	GLattr(ALPHA_SIZE, 8);
-	GLattr(DEPTH_SIZE, 24);
-	GLattr(STENCIL_SIZE, 8);
-	GLattr(DOUBLEBUFFER, 1);
-	GLattr(FRAMEBUFFER_SRGB_CAPABLE, 1);
+	//GLattr(DEPTH_SIZE, 24);
+	//GLattr(STENCIL_SIZE, 8);
+	//GLattr(DOUBLEBUFFER, 1);
+	//GLattr(FRAMEBUFFER_SRGB_CAPABLE, 1);
+#ifdef WPL_EMSCRIPTEN
+	GLattr(CONTEXT_MAJOR_VERSION, 3);
+	GLattr(CONTEXT_MINOR_VERSION, 0);
+	def->hidden = 0;
+	def->posUndefined = 1;
+	def->posCentered = 0;
+	def->resizeable = 1;
+#else
 	GLattr(CONTEXT_MAJOR_VERSION, 3);
 	GLattr(CONTEXT_MINOR_VERSION, 3);
 	GLattr(CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+#endif
 
 	if(def->posCentered) {
 		wposx = SDL_WINDOWPOS_CENTERED;
@@ -88,6 +111,11 @@ i64 wCreateWindow(wWindowDef* def, wWindow* window)
 			(def->hidden ? SDL_WINDOW_HIDDEN : 0) |
 			SDL_WINDOW_OPENGL);
 
+	if(!windowHandle) {
+		fprintf(stderr, "Unable to create window: %s\n", SDL_GetError());
+		return 1;
+	}
+
 	window->windowHandle = windowHandle;
 
 	SDL_DisplayMode dm = {0};
@@ -99,7 +127,8 @@ i64 wCreateWindow(wWindowDef* def, wWindow* window)
 	window->glVersion = 33;
 
 	if(glContext == NULL) {
-		fprintf(stderr, "Unable to create OpenGL 3.3 context\n");
+		fprintf(stderr, "Unable to create OpenGL context: %s\n", SDL_GetError());
+
 		return 1;
 	}
 
@@ -107,13 +136,19 @@ i64 wCreateWindow(wWindowDef* def, wWindow* window)
 	{
 		struct wbgl_ErrorContext ctx;
 		wbgl_load_all(&ctx);
+		
+		/*
+		for(isize i = 0; i < ctx.failed_size; ++i) {
+			printf("%s\n", ctx.failed[i]);
+		}
+		*/
+		
 	}
 
-
 	glClearColor(0, 0, 0, 1);
-
-	window->basePath = SDL_GetBasePath();
+#ifndef WPL_EMSCRIPTEN
 	SDL_GL_SetSwapInterval(1);
+#endif
 
 	return windowHandle == NULL ? 0 : 1;
 }
@@ -135,7 +170,7 @@ i64 wUpdate(wWindow* window, wState* state)
 		SDL_GetWindowSize(window->windowHandle, &width, &height);
 		state->width = width;
 		state->height = height;
-		glViewport(0, 0, width, height);
+		if(glViewport) glViewport(0, 0, width, height);
 	}
 
 	lstate = *state;
@@ -199,7 +234,6 @@ i64 wUpdate(wWindow* window, wState* state)
 		lstate.mouseY = my;
 	}
 
-	glViewport(0, 0, state->width, state->height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	*state = lstate;

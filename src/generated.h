@@ -352,7 +352,7 @@ struct Gui
 
 typedef struct Sprite_
 {
-	i32 flags;
+	f32 flags;
 	u32 color;
 	f32 x;
 	f32 y;
@@ -416,7 +416,7 @@ struct createGraphicsDependencies
 	game shader defaultDivisor;
 	wCreateAttrib game shader;
 	wCreateAttrib game (null);
-	wCreateAttrib game wShader_Int;
+	wCreateAttrib game wShader_Float;
 	wCreateAttrib game (null);
 	wCreateAttrib game Sprite;
 	wCreateAttrib game flags;
@@ -487,19 +487,18 @@ struct createGraphicsDependencies
 	wCreateUniform game SpriteBatch;
 	wCreateUniform game itw;
 	wAddSourceToShader game shader;
-	wAddSourceToShader game GL33_vert;
+	wAddSourceToShader game EGL3_vert;
 	wAddSourceToShader game wShader_Vertex;
 	wAddSourceToShader game shader;
-	wAddSourceToShader game GL33_frag;
+	wAddSourceToShader game EGL3_frag;
 	wAddSourceToShader game wShader_Frag;
 	wFinalizeShader game shader;
 };
 
-void initSprite(Sprite* s, i32 flags, u32 color, f32 x, f32 y, f32 z, f32 angle, f32 w, f32 h, f32 cx, f32 cy, i16 tx, i16 ty, i16 tw, i16 th);
+void initSprite(Sprite* s, f32 flags, u32 color, f32 x, f32 y, f32 z, f32 angle, f32 w, f32 h, f32 cx, f32 cy, i16 tx, i16 ty, i16 tw, i16 th);
 void createGraphicsDependencies();
 SpriteBatch* createSpriteBatch(isize cap, wMemoryArena* arena);
 void drawSprites(SpriteBatch* batch);
 void addSquare(f32 x, f32 y);
 void update();
 void GameMain();
-int main(int argc, char** argv);

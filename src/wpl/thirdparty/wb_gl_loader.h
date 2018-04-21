@@ -1615,7 +1615,7 @@ int wbgl_load_all(struct wbgl_ErrorContext* in_ctx)
 #define GL_TEXTURE_GEN_MODE 0x2500
 #define GL_OBJECT_PLANE 0x2501
 #define GL_EYE_PLANE 0x2502
-#define GL_CLAMP 0x2900
+//#define GL_CLAMP 0x2900
 #define GL_ALPHA4 0x803B
 #define GL_ALPHA8 0x803C
 #define GL_ALPHA12 0x803D

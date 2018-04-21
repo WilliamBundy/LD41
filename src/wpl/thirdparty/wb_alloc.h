@@ -263,9 +263,14 @@ wMemoryInfo wGetMemoryInfo()
 	struct sysinfo si;
 	usize totalMem, pageSize;
 	wMemoryInfo info;
+#ifdef WPL_EMSCRIPTEN
+	totalMem = 2u * 1024u * 1024u * 1024u;
+	pageSize = 4096;
+#else
 	sysinfo(&si);
 	totalMem = si.totalram;
 	pageSize = sysconf(_SC_PAGESIZE);
+#endif
 
 	info.totalMemory = totalMem;
 	info.commitSize = CalcMegabytes(1);
@@ -335,10 +340,12 @@ void wArenaInit(wMemoryArena* arena, wMemoryInfo info, isize flags)
 	arena->flags = flags;
 	arena->name = "arena";
 	arena->info = info;
+#ifndef WB_EMSCRIPTEN
 	arena->start = wbi__allocateVirtualSpace(info.totalMemory);
 	ret = wbi__commitMemory(arena->start,
 			info.commitSize,
 			info.commitFlags);
+#endif
 	if(!ret) {
 		WB_ALLOC_ERROR_HANDLER("failed to commit inital memory", 
 				arena, arena->name);
@@ -355,6 +362,9 @@ WB_ALLOC_API
 void* wArenaPushEx(wMemoryArena* arena, isize size, 
 		WB_ALLOC_EXTENDED_INFO extended)
 {
+#ifdef WPL_EMSCRIPTEN
+	return calloc(1, size);
+#endif
 	void *oldHead, *ret;
 	usize newHead, toExpand;
 

@@ -1,9 +1,15 @@
-#version 300
+#version 300 es
+precision mediump float;
+
 in vec2 fPos;
 in vec2 fTexture;
 in vec2 fTextureScale;
 in vec4 fColor;
-flat in int fFlags;
+//flat in float fFlags;
+flat in float fIsCircle;
+flat in float fIsSDF;
+flat in float fHasTexture;
+flat in float fHasAA;
 
 out vec4 gColor;
 
@@ -29,7 +35,7 @@ void main()
 	//gColor = vec4(1,1,1,1);
 	//return;
 	vec4 baseColor = fColor;
-	if((fFlags & (1<<14)) > 0) {
+	if(fIsSDF > 0.5) {
 		vec2 msdfUnit = vec2(8.0) * uInvTextureSize;
 		vec2 uv = subpixelAA(fTexture, fTextureScale) * uInvTextureSize;
 		vec4 sdfVal = texture(uTexture, uv);
@@ -38,13 +44,18 @@ void main()
 		float opacity = clamp(sigDist + 0.5, 0.0, 1.0);
 		baseColor *= vec4(1, 1, 1, opacity) * uTint;
 		//baseColor = vec4(0.5/fwidth(uv), 1, 1);
-	} else if(!((fFlags & (1<<5)) > 0)) {
-		vec2 uv = subpixelAA(fTexture, fTextureScale);
+	} else if(fHasTexture > 0.5) {
+		vec2 uv;
+		if(fHasAA > 0.5) {
+			uv = subpixelAA(fTexture, fTextureScale);
+		} else {
+			uv = floor(fTexture) + 0.5;
+		}
 		baseColor *= texture(uTexture, uv * uInvTextureSize);
 	}
 	gColor = baseColor;
 
-	if((fFlags & (1<<10)) > 0) {
+	if(fIsCircle > 0.5) {
 		vec2 dl = fPos - vec2(0.5, 0.5);
 		//dist^2 = mag^2 - (0.5)^2
 		float dist2 = dot(dl, dl) - 0.25;

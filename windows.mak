@@ -7,7 +7,7 @@ disabled=/wd4477\
 		 /wd4101\
 		 /D_CRT_SECURE_NO_WARNINGS
 .SILENT:
-all: start shaders libwin32 game libsdl sdlgame end
+all: start shaders libwin32 game end
 
 
 libsdl: 

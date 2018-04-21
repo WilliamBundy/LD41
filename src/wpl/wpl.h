@@ -1,9 +1,37 @@
 #pragma once
 
+// Basic platform detection
+//
+// If you want to do this yourself, or specify something special, your choices are:
+// WPL_WINDOWS or WPL_LINUX
+// On WPL_LINUX, you have to use WPL_SDL_BACKEND
+// On WPL_WINDOWS, you can use either WPL_WIN32_BACKEND or WPL_SDL_BACKEND
+
+#if !defined(WPL_WINDOWS) && !defined(WPL_LINUX)
+#if _MSC_VER
+#define WPL_WINDOWS
+#else
+#define WPL_LINUX
+#endif 
+#endif
+
+#if !defined(WPL_WIN32_BACKEND) && !defined(WPL_SDL_BACKEND)
+#ifdef WPL_WINDOWS
+#define WPL_WIN32_BACKEND
+#else
+#define WPL_SDL_BACKEND
+#endif
+#endif
+
 #include <stdarg.h>
 #include <stdint.h>
 #include <stddef.h>
+#ifndef WPL_WINDOWS
+#include <emmintrin.h>
+#include <immintrin.h>
+#else
 #include <intrin.h>
+#endif
 #define VariadicArgs ...
 
 typedef int8_t i8;
@@ -117,6 +145,25 @@ extern void* stdout;
 /* utility */
 
 void wLogError(i32 errorClass, string fmt, VariadicArgs);
+
+/* hot files */
+typedef struct wHotFile wHotFile;
+struct wHotFile
+{
+	void* handle;
+	u64 lastTime;
+
+	void* data;
+	isize size;
+
+	isize filenameLength;
+	char filename[511], zero;
+};
+
+wHotFile* wCreateHotFile(wWindow* window, string filename);
+void wDestroyHotFile(wHotFile* file);
+i32 wUpdateHotFile(wHotFile* file);
+i32 wCheckHotFile(wHotFile* file);
 
 /* s-archive types */
 
@@ -459,7 +506,7 @@ struct wFontInfo
 usize wDecompressMemToMem(
 		void *output,
 		usize outSize,
-		const void *input,
+		void *input,
 		usize inSize,
 		i32 flags);
 
@@ -471,6 +518,7 @@ void wInitState(wState* state, wInputState* input);
 void wShowWindow();
 i64 wUpdate(wWindow* window, wState* state);
 i64 wRender(wWindow* window);
+void wQuit();
 
 /* input system */
 
